@@ -63,7 +63,7 @@ hg19_reference=${INSTALL_DIR}/reference/human_g1k_v37-${Y}.fasta.gz
 hg38_reference=${INSTALL_DIR}/reference/hg38/UCSC/hg38-${Y}.fa.gz 
 T2T_reference=${INSTALL_DIR}/reference/CP086569.2-chrY/CP086569.2-chrY.fa.gz
 Y_annotation=${INSTALL_DIR}/tree/SNPs-${Y}-annotation-${build}.bed.gz
-annotation_header=${INSTALL_DIR}/annotation.header
+annotation_header=${INSTALL_DIR}/tree/annotation.header
 
 if [[ "$build" == "hg38" ]]
 then
