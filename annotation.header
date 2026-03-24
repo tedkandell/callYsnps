@@ -1,4 +1,0 @@
-##INFO=<ID=AA,Number=1,Type=String,Description="Ancestral Allele">
-##INFO=<ID=DA,Number=1,Type=String,Description="Derived Allele">
-##INFO=<ID=HG,Number=1,Type=String,Description="ISOGG haplogroup">
-##INFO=<ID=YF,Number=1,Type=String,Description="YFull haplogroup">
