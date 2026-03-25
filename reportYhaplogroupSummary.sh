@@ -12,6 +12,8 @@ maximumIgnoredAncestralsForTerminalDamage=3
 
 doNotBreakTies=0
 
+earliestSampleAge=0
+
 function usage()
 {
     >&2 echo "usage: reportYhaplogroupSummary.sh "
@@ -23,9 +25,8 @@ function usage()
     >&2 echo "       [--minimumYearsForGapPenaltyForDamage apply the gap penalty for cases equal or above the minimum number of years in the gap between derived haplogroups where the downstream one is aDNA damage (default $minimumYearsForGapPenaltyForDamage)]"
     >&2 echo "       [--maximumIgnoredAncestralsForTerminalDamage the maximum number of ancestral SNPs for a haplogroup allowed before they are subtracted from the score (default $maximumIgnoredAncestralsForTerminalDamage)]"
     <&2 echo "       [--doNotBreakTies do not break tied top scores of haplogroups by raising the scores of non-aDNA damage haplogroups"
-    <&2 echo "       and then raising the score of the common upstream derived haplogroup for the remaining tied score haplogroups" 
-    <&2 echo "       (default break ties)]"
-
+    <&2 echo "       and then raising the score of the common upstream derived haplogroup for the remaining tied score haplogroups (default break ties)]"
+    <&2 echo "       [--earliestSampleAge the earliest archaeological age of the sample in years before the year 2000.  if the sample age is give/n, then all derived haplogroups  with a formed date (the TMRCA of the immediate parent of the haplogroup) later than the given age of the sample have their score set to zero."
     >&2 echo "       [-h|--help] [.tsv file | stdin (default)]"
 }
 
@@ -110,6 +111,16 @@ while [ "$1" != "" ]; do
                exit 1
             fi
             ;;
+         --earliestSampleAge)    
+            earliestSampleAge=$2
+            if [[ "$earliestSampleAge" =~ ^[0-9]+$ ]] && (( $earliestSampleAge > 0 ))
+            then
+               shift
+            else
+               usage
+               exit 1
+            fi
+            ;;
         --doNotBreakTies)
             doNotBreakTies=1
             ;; 
@@ -124,7 +135,6 @@ while [ "$1" != "" ]; do
    shift
 done
 
-
 input="-"
 
 if [ -f "$1" ] && [ "${1: -4}" == ".tsv" ]
@@ -138,7 +148,7 @@ else if [ "${1}" != "" ]
      fi
 fi
 
-cat "$input" | awk -v paths="$paths" -v TMRCA_lookup_table=$TMRCALookupTable -v gap_penalty_for_damage=$gapPenaltyForDamage -v gap_limit_for_damage=$gapLimitForDamage -v gap_penalty_for_one_derived_non_damage_read=$gapPenaltyForOneDerivedNonDamageRead -v maximum_TMRCA_for_gap_penalty=$maximumTMRCAforGapPenalty -v years_per_point_penalty=$yearsPerPointPenalty -v minimum_years_for_gap_penalty_for_non_damage=$minimumYearsForGapPenaltyForNonDamage -v minimum_years_for_gap_penalty_for_damage=$minimumYearsForGapPenaltyForDamage -v maximum_ignored_ancestrals_for_terminal_damage=$maximumIgnoredAncestralsForTerminalDamage -v do_not_break_ties=$doNotBreakTies '
+cat "$input" | awk -v paths="$paths" -v TMRCA_lookup_table=$TMRCALookupTable -v gap_penalty_for_damage=$gapPenaltyForDamage -v gap_limit_for_damage=$gapLimitForDamage -v gap_penalty_for_one_derived_non_damage_read=$gapPenaltyForOneDerivedNonDamageRead -v maximum_TMRCA_for_gap_penalty=$maximumTMRCAforGapPenalty -v years_per_point_penalty=$yearsPerPointPenalty -v minimum_years_for_gap_penalty_for_non_damage=$minimumYearsForGapPenaltyForNonDamage -v minimum_years_for_gap_penalty_for_damage=$minimumYearsForGapPenaltyForDamage -v maximum_ignored_ancestrals_for_terminal_damage=$maximumIgnoredAncestralsForTerminalDamage -v do_not_break_ties=$doNotBreakTies -v earliest_sample_age=$earliestSampleAge '
 BEGIN {
   FS=OFS="\t"; 
 
@@ -188,6 +198,7 @@ BEGIN {
   upstream_intervening_ancestrals[""] = ""
   gap_from_upstream_derived_haplogroups[""] = 0
   gap_years_from_upstream_derived_haplogroup[""] = 0
+  formed_dates[""] = 0
   short_paths[""] = ""
   terminal_deriveds[""] = 0
 
@@ -285,7 +296,7 @@ function calculate_gap_years(upstream_haplogroup, haplogroup)
    }
    else
    { 
-       return 0
+      return 0
    } 
 }
 
@@ -348,6 +359,15 @@ function calculate_score(haplogroup)
       return scores[haplogroup]
    }
 
+   # if the earliest sample age is given, score 0 for the haplogroup if the 
+   # formed date of the haplogroup is younger than the earliest sample age
+   
+   if (earliest_sample_age > 0 && formed_dates[haplogroup] > 0 &&  earliest_sample_age > formed_dates[haplogroup])
+   {
+      scores[haplogroup] = 0
+      return scores[haplogroup]   
+   }
+   
    # calculate scores for derived haplogroups:
 
    # if a haplogroup has only one non-aDNA damage derived read and  the gap from the upstream derived haplogroup is
@@ -517,7 +537,7 @@ function print_derived_haplogroup(new_path,   upstream_derived)
   stored_haplogroup = "" 
 }
 
-function write_haplogroup(derived, snps, derived_reads, aDNA_damage, full_path, terminal_derived, haplogroup,   gap,  exclude)
+function write_haplogroup(derived, snps, derived_reads, aDNA_damage, full_path,  terminal_derived, haplogroup,   gap,  exclude)
 {
    if (full_path == "")
    {
@@ -564,10 +584,12 @@ function write_haplogroup(derived, snps, derived_reads, aDNA_damage, full_path, 
    if (derived > 0)
    {
       total_derived_reads_for_haplogroup[haplogroup] = derived_reads
+      formed_dates[haplogroup] = find_formed_date(full_path)
    }
    else
    {
       total_derived_reads_for_haplogroup[haplogroup] = 0
+      formed_dates[haplogroup] = 0
    }
 
    aDNA_damages[haplogroup] = aDNA_damage
@@ -720,6 +742,19 @@ function break_ties(    tied_haplogroups_list, tied_haplogroups)
     # boost score of common upstream derived haplogroup to the previous top score +1
     scores[common_upstream_derived_haplogroup] = scores[tied_haplogroups[1]]+1
 }
+
+function find_formed_date(full_path  ,n, haplogroups)
+{
+   n = split(full_path, haplogroups, ">")
+   
+   if (n < 2)
+   {
+      return 0
+   }
+   
+   return TMRCAlookup[haplogroups[n-1]]
+}
+
 
 function print_haplogroups(  n, i, path, haplogroup)
 {
