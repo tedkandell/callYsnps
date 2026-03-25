@@ -327,10 +327,6 @@ function is_qualified_for_gap_penalty(haplogroup)
       {
          if (gap_from_upstream_derived_haplogroups[haplogroup] >= gap_penalty_for_one_derived_non_damage_read && gap_years_from_upstream_derived_haplogroup[haplogroup] >= minimum_years_for_gap_penalty_for_non_damage)
          {
-            if (haplogroup == "R-FTA54130")
-            {
-                print "***** HERE haplogroup=" haplogroup " is qualified for being penalized downstream_derived_not_damage_counts[" haplogroup "]=" downstream_derived_not_damage_counts[haplogroup]
-            }
             return 1
          }
       }
