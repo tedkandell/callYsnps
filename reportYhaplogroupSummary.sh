@@ -358,20 +358,22 @@ function calculate_score(haplogroup)
       scores[haplogroup] = 0
       return scores[haplogroup]
    }
-
+   
    # if the earliest sample age is given, score 0 for the haplogroup if the 
    # formed date of the haplogroup is younger than the earliest sample age
    
-   if (earliest_sample_age > 0 && formed_dates[haplogroup] > 0 &&  earliest_sample_age > formed_dates[haplogroup])
+   if (sample_is_older_than_formed_date_of_haplogroup(haplogroup))
    {
       scores[haplogroup] = 0
+      terminal_deriveds[haplogroup] = 0
+      
       return scores[haplogroup]   
    }
-   
+
    # calculate scores for derived haplogroups:
 
    # if a haplogroup has only one non-aDNA damage derived read and  the gap from the upstream derived haplogroup is
-   # greater than or equal to the parameter for the  gap penalty for such a haplogroup, then a gap penalty is applied 
+   # greater than or equal to the parameter for the gap penalty for such a haplogroup, then a gap penalty is applied 
    # to make the score less than the upstream derived haplogroup because it is likely to be aDNA damage
 
    if (is_qualified_for_gap_penalty(haplogroup))
@@ -506,12 +508,18 @@ function recalculate_scores(   terminal_haplogroup, upstream_derived_haplogroup)
    } 
 }
 
+function haplogroup_from_path(path)
+{
+   sub(/.*>/, "", path)
+   return path
+}
+
 function print_derived_haplogroup(new_path,   upstream_derived)
 {
   if (stored_haplogroup == "" || stored_short_path == "")
      return
 
-  if (index(new_path, stored_haplogroup) == 0)
+  if (index(new_path, stored_haplogroup) == 0 || sample_is_older_than_formed_date_of_haplogroup(haplogroup_from_path(new_path)))
   {
     terminal = 1
   }
@@ -598,7 +606,8 @@ function write_haplogroup(derived, snps, derived_reads, aDNA_damage, full_path, 
    short_paths[haplogroup] = exclude short_path
    terminal_deriveds[haplogroup] = terminal_derived
 
-   if (derived > 0 && upstream_derived_haplogroups[haplogroup] != "")
+   if ((derived > 0 && upstream_derived_haplogroups[haplogroup] != "") && 
+        !sample_is_older_than_formed_date_of_haplogroup(haplogroup))
    {
       downstream_derived_counts[upstream_derived_haplogroups[haplogroup]]+=1
  
@@ -766,6 +775,11 @@ function print_haplogroups(  n, i, path, haplogroup)
     }
 }
 
+function sample_is_older_than_formed_date_of_haplogroup(haplogroup)
+{
+   return earliest_sample_age > 0 && formed_dates[haplogroup] > 0 &&  earliest_sample_age > formed_dates[haplogroup]
+}
+   
 function is_aDNA_damage(snps, derived, total_reads, total_ancestral_reads, total_derived_reads, derived_read_ancestral_allele, ancestral_read_derived_allele, ancestral_read_genotype, derived_read_genotype, haplogroup)
 {
    if (haplogroup == "")
