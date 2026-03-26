@@ -921,8 +921,12 @@ END {
 
   print_haplogroups()
 }
-' | sort -k6,6 | cut -f 1-5 | awk '
+' | sort -k6,6 | cut -f 1-5 | awk -v sample_age=$sampleAge '
 BEGIN {
+   if (sample_age > 0)
+   {
+      print "#Sample age\t" sample_age
+   }
    print "#State\tDerived SNPs/Total SNPs\tpotential aDNA damage\tScore\tHaplogroup path down from the last derived haplogroup at this level"
 }
 { print }
