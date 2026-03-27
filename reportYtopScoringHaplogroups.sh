@@ -56,7 +56,7 @@ trap 'rm -f "$tmp"' EXIT
 cat "${input:--}" > "$tmp"
 
 grep '^#Sample age' "$tmp"
-grep -v "^#" "$tmp" | sort -n -r -k 4,4 | awk -v PathLookupTable=$PathLookupTable -v top=$top  '
+grep "^\+" "$tmp" | sort -n -r -k 4,4 | awk -v PathLookupTable=$PathLookupTable -v top=$top  '
 BEGIN {
    FS=OFS="\t"; 
 
