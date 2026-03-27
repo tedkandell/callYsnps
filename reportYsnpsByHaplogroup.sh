@@ -99,6 +99,7 @@ else
 fi
 
 temp_file=mktemp
+trap 'rm -f "$temp_file"' EXIT
 
 bcftools query -i 'ID !="."' -f '%ID\t%POS\t%FIRST_ALT\t%AA\t%DA\t[%AD{0},]\t[%AD{1},]\t%HG\t%YF\t%REF\t%TYPE\n' "${input}" | 
 sort ${sort} -V | 
@@ -236,4 +237,4 @@ END {
 }
 '
 sort -k14,14 -t$'\t' $temp_file
-rm $temp_file
+

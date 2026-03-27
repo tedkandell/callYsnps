@@ -52,6 +52,7 @@ else if [ "${1}" != "" ]
 fi
 
 tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
 cat "${input:--}" > "$tmp"
 
 grep '^#Sample age' "$tmp"
@@ -102,4 +103,4 @@ END {
   }
 }
 '
-rm "$tmp"
+
