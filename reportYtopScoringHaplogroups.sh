@@ -51,7 +51,11 @@ else if [ "${1}" != "" ]
      fi
 fi
 
-cat "$input" | grep -v "^#" | sort -n -r -k 4,4 | awk -v PathLookupTable=$PathLookupTable -v top=$top  '
+tmp=$(mktemp)
+cat "${input:--}" > "$tmp"
+
+grep '^#Sample age' "$tmp"
+grep -v "^#" "$tmp" | sort -n -r -k 4,4 | awk -v PathLookupTable=$PathLookupTable -v top=$top  '
 BEGIN {
    FS=OFS="\t"; 
 
@@ -98,4 +102,4 @@ END {
   }
 }
 '
-  
+rm "$tmp"
