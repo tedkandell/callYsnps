@@ -2,7 +2,10 @@
 
 function usage()
 {
-    >&2 echo "usage: reportNovelYsnps [-h|--help] [--depth <integer> (default 2)] [--percentDerived <float> (default 1)] [.vcf.gz file | stdin (default)]"
+    >&2 echo "usage: reportNovelYsnps [-h|--help] [--depth <integer> (default 2)]" 
+    >&2 echo "[--percentDerived <float> (default 1)]"
+    >&2 echo "[--minimumQUAL minimum QUAL score for a variant likelihood in the VCF (default 20 = 99% probability of a variant)]"
+    >&2 echo "[.vcf.gz file | stdin (default)]"
 }
 
 INSTALL_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -11,6 +14,7 @@ input="-"
 
 depth=2
 percentDerived=1
+minimumQUAL=20
 
 while [ "$1" != "" ]; do
    case $1 in
@@ -25,6 +29,7 @@ while [ "$1" != "" ]; do
                shift
             else 
                usage
+               exit
             fi
             ;;
         --percentDerived)
@@ -34,6 +39,22 @@ while [ "$1" != "" ]; do
                shift
             else 
                usage
+               exit
+            fi
+            ;;
+        --minimumQUAL)
+            if [ ! -z "$2" ]
+            then
+               minimumQUAL="$2"
+            else
+               usage
+            fi                  
+            if [[ "$minimumQUAL" =~ ^[0-9]+$ ]] 
+            then
+               shift
+            else 
+               usage
+               exit
             fi
             ;;
         -?*)
@@ -86,8 +107,7 @@ else
    exit 1
 fi
 
-
-bcftools query -i 'ID=="." && FILTER=="."'  -R ${REGIONS} -f '%POS\t%REF\t%ALT\t[%AD{0},]\t[%AD{1},]\n' "${input}" | 
+bcftools query -i 'ID=="." && FILTER=="." && QUAL>='${minimumQUAL} -R ${REGIONS} -f  '%POS\t%REF\t%ALT\t[%AD{0},]\t[%AD{1},]\n' "${input}" | 
 awk  -v filter="$filter" -v depth="$depth" -v percentDerived="$percentDerived" -v build="$build" -v Y="$Y" '
 BEGIN {
    OFS="\t"; 
@@ -96,6 +116,7 @@ BEGIN {
 } 
 
 {
+#   print $0
    split($3, genotypes, ",");
    genotype = genotypes[1];
 

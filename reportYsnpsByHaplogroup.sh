@@ -2,12 +2,17 @@
 
 function usage()
 {
-    >&2 echo "usage: reportYsnpsByHaplogroup.sh [-h|--help] [--filter <haplogroup name>] [--derived] [.vcf.gz file | stdin (default)]"
+    >&2 echo "usage: reportYsnpsByHaplogroup.sh [-h|--help]" 
+    >&2 echo "[--filter <haplogroup name>] [--derived]"
+    >&2 echo "[--minimumQUAL minimum QUAL score for a variant likelihood in the VCF (default 20 = 99% probability of a variant)]"
+    >&2 echo "[.vcf.gz file | stdin (default)]"
 }
 
 INSTALL_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 PathLookupTable=${INSTALL_DIR}/tree/haplogroupPathLookupTable.tsv
+
+minimumQUAL=0
 
 sort="-k9 -k2"
 
@@ -24,11 +29,28 @@ while [ "$1" != "" ]; do
                shift
             else 
                usage
+               exit
             fi
             ;;
         --derived)
            derived="TRUE"
            ;;
+        --minimumQUAL)
+            if [ ! -z "$2" ]
+            then
+               minimumQUAL="$2"
+            else
+               usage
+               exit
+            fi                  
+            if [[ "$minimumQUAL" =~ ^[0-9]+$ ]] 
+            then
+               shift
+            else
+               usage
+               exit
+            fi
+            ;;         
         -?*)
             printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
             ;;
@@ -101,7 +123,7 @@ fi
 temp_file=mktemp
 trap 'rm -f "$temp_file"' EXIT
 
-bcftools query -i 'ID !="."' -f '%ID\t%POS\t%FIRST_ALT\t%AA\t%DA\t[%AD{0},]\t[%AD{1},]\t%HG\t%YF\t%REF\t%TYPE\n' "${input}" | 
+bcftools query -i 'ID !="." && QUAL>='${minimumQUAL} -f '%ID\t%POS\t%FIRST_ALT\t%AA\t%DA\t[%AD{0},]\t[%AD{1},]\t%HG\t%YF\t%REF\t%TYPE\n' "${input}" | 
 sort ${sort} -V | 
 awk -v filter="$filter" -v derived="$derived" -v build="$build" -v Y="$Y" -v PathLookupTable=$PathLookupTable -v temp_file="$temp_file" '
 BEGIN {
