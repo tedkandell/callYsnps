@@ -17,16 +17,27 @@ sampleAge=0
 function usage()
 {
     >&2 echo "usage: reportYhaplogroupSummary.sh "
-    >&2 echo "       [--gapPenaltyForDamage integer number of haplogroups skipped before the penalty for aDNA damage is applied to the score (default $gapPenaltyForDamage)]" 
+    >&2 echo "       [--gapPenaltyForDamage integer number of haplogroups skipped before the penalty for"
+    >&2 echo "          aDNA damage is applied to the score (default $gapPenaltyForDamage)]" 
     >&2 echo "       [--gapPenaltyForOneDerivedNonDamageRead (default $gapPenaltyForOneDerivedNonDamageRead)]"
     >&2 echo "       [--maximumTMRCAforGapPenalty TMRCA year below which gap penalty can be applied (default $maximumTMRCAforGapPenalty)]"
-    >&2 echo "       [--yearsPerPointPenalty subtract 1 point from the score for these number of gap years between derived haplogroups (default $yearsPerPointPenalty)]"
-    >&2 echo "       [--minimumYearsForGapPenaltyForNonDamage apply the gap penalty for cases equal or above the minimum number of years in the gap between derived haplogroups where the downstream one is not aDNA damage (default $minimumYearsForGapPenaltyForNonDamage)] " 
-    >&2 echo "       [--minimumYearsForGapPenaltyForDamage apply the gap penalty for cases equal or above the minimum number of years in the gap between derived haplogroups where the downstream one is aDNA damage (default $minimumYearsForGapPenaltyForDamage)]"
-    >&2 echo "       [--maximumIgnoredAncestralsForTerminalDamage the maximum number of ancestral SNPs for a haplogroup allowed before they are subtracted from the score (default $maximumIgnoredAncestralsForTerminalDamage)]"
-    <&2 echo "       [--doNotBreakTies do not break tied top scores of haplogroups by raising the scores of non-aDNA damage haplogroups"
-    <&2 echo "       and then raising the score of the common upstream derived haplogroup for the remaining tied score haplogroups (default break ties)]"
-    <&2 echo "       [--sampleAge the archaeological age of the sample in years before the year 2000.  if the sample age is given, then all derived haplogroups  with a formed date (the TMRCA of the immediate parent of the haplogroup) later than the given age of the sample have their score set to zero."
+    >&2 echo "       [--yearsPerPointPenalty subtract 1 point from the score for these number of gap years between"
+    >&2 echo "          derived haplogroups (default $yearsPerPointPenalty)]"
+    >&2 echo "       [--minimumYearsForGapPenaltyForNonDamage apply the gap penalty for cases equal or above"
+    >&2 echo "          the minimum number of years in the gap between derived haplogroups where the downstream"
+    >&2 echo "          one is not aDNA damage (default $minimumYearsForGapPenaltyForNonDamage)]" 
+    >&2 echo "       [--minimumYearsForGapPenaltyForDamage apply the gap penalty for cases equal or above the"
+    >&2 echo "          minimum number of years in the gap between derived haplogroups where the downstream one"
+    >&2 echo "          is aDNA damage (default $minimumYearsForGapPenaltyForDamage)]"
+    >&2 echo "       [--maximumIgnoredAncestralsForTerminalDamage the maximum number of ancestral SNPs for"
+    >&2 echo "          a haplogroup allowed before they are subtracted from the score (default $maximumIgnoredAncestralsForTerminalDamage)]"
+    >&2 echo "       [--doNotBreakTies do not break tied top scores of haplogroups by raising the scores of"
+    >&2 echo "          non-aDNA damage haplogroups and then raising the score of the common upstream derived"
+    <&2 echo "          haplogroup for the remaining tied score haplogroups (default break ties)]"
+    <&2 echo "       [--sampleAge the archaeological age of the sample in years before the year 2000."
+    <&2 echo "          if the sample age is given, then all derived haplogroups with a formed date"
+    <&2 echo "          (the TMRCA of the immediate parent of the haplogroup) later than the given age"
+    <&2 echo "          of the sample have their score set to zero."
     >&2 echo "       [-h|--help] [.tsv file | stdin (default)]"
 }
 
@@ -148,7 +159,7 @@ else if [ "${1}" != "" ]
      fi
 fi
 
-cat "$input" | awk -v paths="$paths" -v TMRCA_lookup_table=$TMRCALookupTable -v gap_penalty_for_damage=$gapPenaltyForDamage -v gap_limit_for_damage=$gapLimitForDamage -v gap_penalty_for_one_derived_non_damage_read=$gapPenaltyForOneDerivedNonDamageRead -v maximum_TMRCA_for_gap_penalty=$maximumTMRCAforGapPenalty -v years_per_point_penalty=$yearsPerPointPenalty -v minimum_years_for_gap_penalty_for_non_damage=$minimumYearsForGapPenaltyForNonDamage -v minimum_years_for_gap_penalty_for_damage=$minimumYearsForGapPenaltyForDamage -v maximum_ignored_ancestrals_for_terminal_damage=$maximumIgnoredAncestralsForTerminalDamage -v do_not_break_ties=$doNotBreakTies -v sample_age=$sampleAge '
+cat "$input" | awk -v paths="$paths" -v TMRCA_lookup_table=$TMRCALookupTable -v gap_penalty_for_damage=$gapPenaltyForDamage -v gap_penalty_for_one_derived_non_damage_read=$gapPenaltyForOneDerivedNonDamageRead -v maximum_TMRCA_for_gap_penalty=$maximumTMRCAforGapPenalty -v years_per_point_penalty=$yearsPerPointPenalty -v minimum_years_for_gap_penalty_for_non_damage=$minimumYearsForGapPenaltyForNonDamage -v minimum_years_for_gap_penalty_for_damage=$minimumYearsForGapPenaltyForDamage -v maximum_ignored_ancestrals_for_terminal_damage=$maximumIgnoredAncestralsForTerminalDamage -v do_not_break_ties=$doNotBreakTies -v sample_age=$sampleAge '
 BEGIN {
   FS=OFS="\t"; 
 
@@ -437,14 +448,13 @@ function calculate_score(haplogroup)
 
    if (terminal_deriveds[haplogroup] == 1 && aDNA_damages[haplogroup] == "True" && upstream_intervening_ancestrals[haplogroup] == "")
    {
-      # if the terminal that is aDNA_damage has a gap from the upstream derived haplogroup >= the gap_limit_for_damage parameter for this run 
-      # then the score is set to 0
-
-      # if the terminal that is aDNA_damage has a gap from the upstream derived haplogroup < the gap_limit_for_damage parameter for this run
-      # and the gap is >= the gap_penalty_for_damage parameter for this run then the score is set to the score for the upstream derived haplogroup
-      # minus the gap value+1. This is to prevent any terminal with aDNA damage from equaling or exceeding the score of the 
-      # upstream derived haplogroup.
-
+      # if the terminal that is aDNA_damage has ancestral alleles <= the maximum 
+      # ignored ancestrals for terminal damage for this run then the score is set 
+      # to the score for the upstream derived haplogroup plus only the number of
+      # derived alleles, otherwise the number of ancetral alleles are also subtracted 
+      # as well. This allows for terminal splits to be significant in some cases of 
+      # terminal damage below the minimum years for a gap penalty for damage.
+      
        if ((total_snps[haplogroup]-deriveds[haplogroup]) <= maximum_ignored_ancestrals_for_terminal_damage)
        { 
           scores[haplogroup] = scores[upstream_derived_haplogroups[haplogroup]] + deriveds[haplogroup]
@@ -899,7 +909,7 @@ END {
      {
         if (derived != 0)
         {
-           write_haplogroup(derived, snps, aDNA_damage, total_derived_reads, old_path, 1, old_haplogroup)
+           write_haplogroup(derived, snps, total_derived_reads, aDNA_damage, old_path, 1, old_haplogroup)
            calculate_score(old_haplogroup)
         }
   
