@@ -33,11 +33,11 @@ function usage()
     >&2 echo "          a haplogroup allowed before they are subtracted from the score (default $maximumIgnoredAncestralsForTerminalDamage)]"
     >&2 echo "       [--doNotBreakTies do not break tied top scores of haplogroups by raising the scores of"
     >&2 echo "          non-aDNA damage haplogroups and then raising the score of the common upstream derived"
-    <&2 echo "          haplogroup for the remaining tied score haplogroups (default break ties)]"
-    <&2 echo "       [--sampleAge the archaeological age of the sample in years before the year 2000."
-    <&2 echo "          if the sample age is given, then all derived haplogroups with a formed date"
-    <&2 echo "          (the TMRCA of the immediate parent of the haplogroup) later than the given age"
-    <&2 echo "          of the sample have their score set to zero."
+    >&2 echo "          haplogroup for the remaining tied score haplogroups (default break ties)]"
+    >&2 echo "       [--sampleAge the archaeological age of the sample in years before the year 2000."
+    >&2 echo "          if the sample age is given, then all derived haplogroups with a formed date"
+    >&2 echo "          (the TMRCA of the immediate parent of the haplogroup) later than the given age"
+    >&2 echo "          of the sample have their score set to zero."
     >&2 echo "       [-h|--help] [.tsv file | stdin (default)]"
 }
 
@@ -182,7 +182,7 @@ BEGIN {
 
   derived_read_ancestral_allele = ""
   derived_read_genotype = ""
-  ancestral_read_derived_allele ""
+  ancestral_read_derived_allele = ""
   ancestral_read_genotype = ""
 
   aDNA_damage = ""
@@ -294,9 +294,18 @@ function find_upstream_derived_haplogroup(path,   i, n, haplogroups)
    return ""
 }
 
-function calculate_short_path(full_path)
+function calculate_short_path(full_path,   upstream_derived_haplogroup)
 {
-   return substr(full_path, index(full_path, (find_upstream_derived_haplogroup(full_path) ">")))
+   upstream_derived_haplogroup = find_upstream_derived_haplogroup(full_path)
+   
+   if (upstream_derived_haplogroup == "")
+   {
+      return full_path
+   }
+   else
+   {
+      return substr(full_path, index(full_path, (find_upstream_derived_haplogroup(full_path) ">")))
+   }
 }
 
 function calculate_gap_years(upstream_haplogroup, haplogroup)
@@ -629,7 +638,7 @@ function write_haplogroup(derived, snps, derived_reads, aDNA_damage, full_path, 
    }
 }
 
-function find_tied_top_score_haplogroups(top_score_haplogroups_array,      haplogroup, top_score, score_count, score_haplogroups)
+function find_tied_top_score_haplogroups(   haplogroup, top_score, score_count, score_haplogroups)
 {
    top_score = 0
    split("", score_count)
@@ -655,47 +664,52 @@ function find_tied_top_score_haplogroups(top_score_haplogroups_array,      haplo
    return ""   
 }
  
-function find_haplogroup_in_derived_path(haplogroup, upstream_derived_path,    len, i, upstream_derived_path_values, upstream_derived_paths_keys)
-{
-   len = split(upstream_derived_path, upstream_derived_path_values)
-  
-   for (i=1; i <= len; i++)
-   { 
-      upstream_derived_path_keys[upstream_derived_path_values[i]] = ""
-   }
-  
-   return haplogroup
-
-   if (haplogroup in upstream_derived_path_keys)
-   {
-      return haplogroup
-   }
-   
-   return ""
-}
-
-function find_upstream_common_derived_haplogroup(tied_haplogroups,      i, common_upstream_derived_haplogroup, upstream_derived_haplogroup)
+function find_upstream_common_derived_haplogroup(tied_haplogroups,      i, common_upstream_derived_haplogroup, upstream_derived_path, derived_haplogroup)
 {
     common_upstream_derived_haplogroup = upstream_derived_haplogroups[tied_haplogroups[1]]
 
+    # already at the root 
+    if (common_upstream_derived_haplogroup == "")
+    {
+       return ""
+    }
+        
     for (i = 2; i <= length(tied_haplogroups); i++)
     {
-       while ((upstream_derived_haplogroup = upstream_derived_haplogroups[tied_haplogroups[i]]) == "")
+       upstream_derived_path = ""
+       derived_haplogroup = tied_haplogroups[i]
+
+       while (derived_haplogroup != "")
        {
-          upstream_derived_paths[i] = upstream_derived_paths[i] " " upstream_derived_haplogroup 
+          if (upstream_derived_path != "")
+          {
+             upstream_derived_path = upstream_derived_path " "
+          }
+          upstream_derived_path = upstream_derived_path derived_haplogroup
+          derived_haplogroup = upstream_derived_haplogroups[derived_haplogroup]
        }
-      
-       while (find_haplogroup_in_derived_path(common_upstream_derived_haplogroup, upstream_derived_paths[i]) == "")   
-       {
-         common_upstream_derived_haplogroup = upstream_derived_haplogroups[common_upstream_derived_haplogroup]
-       }
-   
+
+       # at the root and found nothing in common
        if (common_upstream_derived_haplogroup == "")
        {
           return ""
        }
-    }
        
+       # make sure we search for the entire string and a " " because many basal haplogroups 
+       # are substrings of other haplogroups
+       if (index(upstream_derived_path " ", common_upstream_derived_haplogroup) == 0)
+       {
+          #try next upstream derived in tied_haplogroups[1]
+          common_upstream_derived_haplogroup = upstream_derived_haplogroups[common_upstream_derived_haplogroup]
+
+          # if we hit the root, there is no common upstream derived haplogroup
+          if (common_upstream_derived_haplogroup == "")
+          {
+            return ""
+          }
+       }
+    }
+    
     return common_upstream_derived_haplogroup
 }
 
@@ -741,12 +755,15 @@ function break_ties(    tied_haplogroups_list, tied_haplogroups)
        }
 
        common_upstream_derived_haplogroup = find_upstream_common_derived_haplogroup(non_aDNA_damage_tied_haplogroups)
-
+       
        # boost score of the common upstream derived haplogroup of the non-aDNA damage tied haplogroups to their new score +1 
        # to make it the top score
 
-       scores[common_upstream_derived_haplogroup] = scores[non_aDNA_damage_tied_haplogroups[1]]+1
-      
+       if (common_upstream_derived_haplogroup != "")
+       {
+          scores[common_upstream_derived_haplogroup] = scores[non_aDNA_damage_tied_haplogroups[1]]+1
+       }
+       
        return
     }
 
@@ -755,7 +772,10 @@ function break_ties(    tied_haplogroups_list, tied_haplogroups)
     common_upstream_derived_haplogroup = find_upstream_common_derived_haplogroup(tied_haplogroups)
 
     # boost score of common upstream derived haplogroup to the previous top score +1
-    scores[common_upstream_derived_haplogroup] = scores[tied_haplogroups[1]]+1
+    if (common_upstream_derived_haplogroup != "")
+    {
+       scores[common_upstream_derived_haplogroup] = scores[tied_haplogroups[1]]+1
+    }
 }
 
 function find_formed_date(full_path  ,n, haplogroups)
@@ -903,22 +923,21 @@ END {
 
   if (haplogroup != "Ξ")
   {
-     aDNA_damage = is_aDNA_damage(snps, derived, total_reads, total_ancestral_reads, total_derived_reads, derived_read_ancestral_allele, ancestral_read_derived_allele, ancestral_read_genotype, derived_read_genotype, old_haplogroup)   
+     aDNA_damage = is_aDNA_damage(snps, derived, total_reads, total_ancestral_reads, total_derived_reads, derived_read_ancestral_allele, ancestral_read_derived_allele, ancestral_read_genotype, derived_read_genotype, haplogroup)   
 
-     if (old_haplogroup != "" && find_upstream_blacklisted_haplogroup(old_path) == "")
+     if (haplogroup != "" && find_upstream_blacklisted_haplogroup(path) == "")
      {
         if (derived != 0)
         {
-           write_haplogroup(derived, snps, total_derived_reads, aDNA_damage, old_path, 1, old_haplogroup)
-           calculate_score(old_haplogroup)
+           write_haplogroup(derived, snps, total_derived_reads, aDNA_damage, path, 1, haplogroup)
         }
   
         if (derived == 0)
         {
-           write_haplogroup(derived, snps, 0, aDNA_damage, old_path, 0, old_haplogroup)
+           write_haplogroup(derived, snps, 0, aDNA_damage, path, 0, haplogroup)
         }
 
-        calculate_score(old_haplogroup)
+        calculate_score(haplogroup)
      }
   }
 
