@@ -697,7 +697,7 @@ function find_upstream_common_derived_haplogroup(tied_haplogroups,      i, commo
        
        # make sure we search for the entire string and a " " because many basal haplogroups 
        # are substrings of other haplogroups
-       if (index(upstream_derived_path " ", common_upstream_derived_haplogroup) == 0)
+       if (index(upstream_derived_path " ", common_upstream_derived_haplogroup " ") == 0)
        {
           #try next upstream derived in tied_haplogroups[1]
           common_upstream_derived_haplogroup = upstream_derived_haplogroups[common_upstream_derived_haplogroup]
