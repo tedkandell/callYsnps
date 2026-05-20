@@ -61,7 +61,7 @@ fi
 
 hg19_reference=${INSTALL_DIR}/reference/human_g1k_v37-${Y}.fasta.gz
 hg38_reference=${INSTALL_DIR}/reference/hg38-${Y}.fa.gz 
-T2T_reference=${INSTALL_DIR}/reference/CP086569.2-chrY/CP086569.2-chrY.fa.gz
+T2T_reference=${INSTALL_DIR}/reference/CP086569.2-chrY.fa.gz
 Y_annotation=${INSTALL_DIR}/tree/SNPs-${Y}-annotation-${build}.bed.gz
 annotation_header=${INSTALL_DIR}/tree/annotation.header
 
@@ -75,7 +75,7 @@ then
     ploidy="GRCh37"
 elif [[ "$build" == "T2T" ]]
 then
-    reference="${T2T_reference}":
+    reference="${T2T_reference}"
     ploidy="1"
 #elif [[ "$build" == "PR1" ]]
 #then
@@ -85,7 +85,7 @@ fi
 
 echo "${base_filename}.$filetype Y sequence name: ${Y} Build: ${build}"
 
-if [[ ${bam} != http:* ]] && [[ ${bam} != ftp:* ]]  && [[ ! -f "${bam}.$indextype" ]] 
+if [[ ${bam} != http:* ]] && [[ ${bam} != ftp:* ]]  && [[ ! -f "${bam}.$indextype" ]] && [[ ! -f "${bam%.*}.$indextype" ]] 
 then
    echo "BAM index not found, indexing ${bam} ..."
    samtools index "${base_filename}.$filetype"
